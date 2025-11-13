@@ -1,29 +1,30 @@
 # ClarifyJS 🚀
 
-**Librería TypeScript para crear formularios dinámicos con validación automática usando Zod**
+**Librería TypeScript para crear formularios dinámicos con validación automática usando Zod y Tailwind CSS**
 
-ClarifyJS te permite crear formularios HTML completos desde esquemas Zod o estructuras JSON, con validación en tiempo real y una API simple e intuitiva.
+ClarifyJS te permite crear formularios HTML completos desde esquemas Zod o estructuras JSON, con validación en tiempo real, estilos con Tailwind CSS y una API simple e intuitiva.
 
 ## ✨ Características
 
 - 🎯 **Generación automática desde Zod**: Convierte esquemas Zod en formularios funcionales
 - ✅ **Validación en tiempo real**: Validación mientras el usuario escribe y al perder foco
-- 🎨 **Estilos modernos incluidos**: CSS con sistema de grid responsivo
+- 🎨 **Tailwind CSS integrado**: Estilos modernos y responsivos con Tailwind CSS
 - 🔄 **Soporte para campos anidados**: Objetos y estructuras complejas
 - 📦 **TypeScript nativo**: Tipos completos y autocompletado
 - 🎛️ **Altamente configurable**: Personaliza labels, placeholders, descripciones
 - 🌐 **Múltiples tipos de input**: text, number, email, password, textarea, select, checkbox
+- 🎯 **Montaje automático**: Especifica el elemento donde se montará el formulario
 
 ## 📦 Instalación
 
 ```bash
-npm install zod
+npm install zod tailwindcss
 # ClarifyJS está incluido en el proyecto
 ```
 
 ## 🚀 Uso Rápido
 
-### 1. Desde un Schema Zod (Recomendado)
+### 1. Desde un Schema Zod con Selector de Elemento (Recomendado)
 
 ```typescript
 import { z } from "zod";
@@ -37,8 +38,9 @@ const userSchema = z.object({
   age: z.number().min(18, "Debes ser mayor de edad"),
 });
 
-// Crea el formulario automáticamente
+// Crea el formulario automáticamente con selector de elemento
 const form = ClarifyJS.fromSchema(userSchema, {
+  el: "#root", // Selector CSS o elemento DOM donde se montará
   labels: {
     firstName: "Nombre",
     lastName: "Apellido",
@@ -55,8 +57,24 @@ const form = ClarifyJS.fromSchema(userSchema, {
   },
 });
 
-// Renderiza en el DOM
-document.getElementById("root")?.appendChild(form.render());
+// Se monta automáticamente en el elemento especificado
+form.render();
+
+// O también puedes montarlo manualmente sin especificar 'el':
+// document.getElementById("root")?.appendChild(form.render());
+```
+
+### 2. Con Elemento DOM Directo
+
+```typescript
+const targetElement = document.getElementById("form-container");
+
+const form = ClarifyJS.fromSchema(userSchema, {
+  el: targetElement, // También acepta un elemento DOM directamente
+  onSubmit: (data) => console.log(data),
+});
+
+form.render();
 ```
 
 ### 2. Desde Estructura JSON
@@ -243,13 +261,23 @@ Crea un formulario desde un schema Zod.
 **Parámetros:**
 - `schema`: Schema de Zod (ZodObject)
 - `config`:
+  - `el?`: Selector CSS (string) o elemento DOM donde montar el formulario
   - `labels?`: Objeto con labels personalizados por campo
   - `onSubmit?`: Callback cuando el formulario es válido
   - `onChange?`: Callback en cada cambio de campo
 
 **Retorna:** Instancia de ClarifyJS
 
-### `new ClarifyJS(config)`
+**Ejemplo:**
+```typescript
+const form = ClarifyJS.fromSchema(mySchema, {
+  el: "#app", // Se monta automáticamente en este elemento
+  onSubmit: (data) => console.log(data),
+});
+form.render();
+```
+
+### `new ClarifyJS(config, el?)`
 
 Crea un formulario desde una estructura JSON.
 
@@ -258,6 +286,16 @@ Crea un formulario desde una estructura JSON.
 - `config.schema?`: Schema Zod opcional para validación completa
 - `config.onSubmit?`: Callback de envío
 - `config.onChange?`: Callback de cambio
+- `el?`: Selector CSS o elemento DOM (opcional)
+
+**Ejemplo:**
+```typescript
+const form = new ClarifyJS({
+  structure: myStructure,
+  onSubmit: (data) => console.log(data),
+}, "#form-container");
+form.render();
+```
 
 ### Métodos de Instancia
 
@@ -283,30 +321,58 @@ form.setData({
 
 ## 🎨 Personalización de Estilos
 
-ClarifyJS usa clases CSS que puedes sobrescribir:
+ClarifyJS usa **Tailwind CSS** para todos sus estilos. Puedes personalizar la apariencia de varias formas:
+
+### 1. Usando el archivo `tailwind.config.js`
+
+```javascript
+export default {
+  content: [
+    "./src/**/*.{html,js,ts,jsx,tsx}",
+    "./dist/**/*.js"
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: '#your-color',
+        // ...más colores personalizados
+      },
+    },
+  },
+  plugins: [],
+}
+```
+
+### 2. Sobrescribiendo clases CSS
 
 ```css
 /* Personaliza el formulario */
 .clarifyjs-form {
-  background: #fff;
-  padding: 30px;
+  @apply bg-gray-50 p-6 rounded-xl shadow-2xl;
 }
 
 /* Personaliza los campos */
 .clarifyjs-field input {
-  border-color: #your-color;
+  @apply border-purple-300 focus:border-purple-500;
 }
 
 /* Personaliza los errores */
 .clarifyjs-error {
-  color: #ff0000;
+  @apply text-red-600 font-medium;
 }
 
 /* Personaliza el botón */
 .clarifyjs-submit {
-  background: #your-brand-color;
+  @apply bg-gradient-to-r from-purple-500 to-blue-500;
 }
 ```
+
+### 3. Clases de Tailwind aplicadas por defecto
+
+- **Formulario**: `bg-white p-8 rounded-lg shadow-lg`
+- **Inputs**: `w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-100`
+- **Botón Submit**: `w-full bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600`
+- **Errores**: `text-xs text-red-500 transition-opacity`
 
 ## 🔧 Sistema de Grid
 

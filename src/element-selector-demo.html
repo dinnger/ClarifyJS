@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClarifyJS - Ejemplo con Selector de Elemento</title>
+
+  <!-- Tailwind CSS desde CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Estilos personalizados de ClarifyJS -->
+  <link rel="stylesheet" href="./styles.css">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "zod": "https://cdn.jsdelivr.net/npm/zod@3.22.4/+esm"
+      }
+    }
+  </script>
+</head>
+
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-12">
+  <div class="container mx-auto max-w-6xl px-4">
+    <header class="text-center mb-12">
+      <h1 class="text-5xl font-bold text-gray-900 mb-3">ClarifyJS 🚀</h1>
+      <p class="text-xl text-gray-600 mb-2">Formularios dinámicos con selector de elemento</p>
+      <p class="text-sm text-gray-500">Demostración de montaje automático con <code
+          class="bg-gray-200 px-2 py-1 rounded">el</code> selector</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Formulario 1: Selector CSS String -->
+      <div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+          <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">1</span>
+          Con Selector CSS (String)
+        </h2>
+        <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+          <code class="text-sm text-gray-600">
+            el: "#form-1"
+          </code>
+        </div>
+        <div id="form-1"></div>
+      </div>
+
+      <!-- Formulario 2: Elemento DOM Directo -->
+      <div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+          <span class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">2</span>
+          Con Elemento DOM Directo
+        </h2>
+        <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+          <code class="text-sm text-gray-600">
+            el: document.getElementById("form-2")
+          </code>
+        </div>
+        <div id="form-2"></div>
+      </div>
+    </div>
+
+    <!-- Formulario 3: Montaje Manual (método tradicional) -->
+    <div class="mt-8">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+        <span class="bg-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2">3</span>
+        Montaje Manual (Compatible con versión anterior)
+      </h2>
+      <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+        <code class="text-sm text-gray-600">
+          document.getElementById("form-3").appendChild(form.render())
+        </code>
+      </div>
+      <div id="form-3"></div>
+    </div>
+
+    <footer class="text-center mt-12 text-gray-600 text-sm">
+      <p class="mb-2">✨ Todos los formularios usan el mismo schema de Zod</p>
+      <p>Hecho con ❤️ usando ClarifyJS + Tailwind CSS</p>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { z } from "zod";
+    import { ClarifyJS } from "./index.ts";
+
+    // Schema Zod compartido
+    const contactSchema = z.object({
+      name: z.string().min(2, "Mínimo 2 caracteres"),
+      email: z.string().email("Email inválido"),
+      message: z.string().min(10, "Mínimo 10 caracteres"),
+    });
+
+    // Función de submit compartida
+    const handleSubmit = (data, formNumber) => {
+      console.log(`Formulario ${formNumber} enviado:`, data);
+      alert(`✅ Formulario ${formNumber} válido!\n\nNombre: ${data.name}\nEmail: ${data.email}\nMensaje: ${data.message}`);
+    };
+
+    // FORMULARIO 1: Con selector CSS string
+    const form1 = ClarifyJS.fromSchema(contactSchema, {
+      el: "#form-1", // Selector CSS
+      onSubmit: (data) => handleSubmit(data, 1),
+      onChange: (data, errors) => {
+        console.log("Form 1 - Datos:", data, "Errores:", errors);
+      },
+    });
+    form1.render();
+
+    // FORMULARIO 2: Con elemento DOM directo
+    const form2Element = document.getElementById("form-2");
+    const form2 = ClarifyJS.fromSchema(contactSchema, {
+      el: form2Element, // Elemento DOM
+      onSubmit: (data) => handleSubmit(data, 2),
+      onChange: (data, errors) => {
+        console.log("Form 2 - Datos:", data, "Errores:", errors);
+      },
+    });
+    form2.render();
+
+    // FORMULARIO 3: Montaje manual (método tradicional)
+    const form3 = ClarifyJS.fromSchema(contactSchema, {
+      // Sin especificar 'el'
+      onSubmit: (data) => handleSubmit(data, 3),
+      onChange: (data, errors) => {
+        console.log("Form 3 - Datos:", data, "Errores:", errors);
+      },
+    });
+    // Montaje manual
+    const form3Container = document.getElementById("form-3");
+    if (form3Container) {
+      form3Container.appendChild(form3.render());
+    }
+  </script>
+</body>
+
+</html>

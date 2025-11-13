@@ -4,8 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ClarifyJS - Formulario con Validación Zod</title>
+  <title>ClarifyJS - Formulario con Validación Zod + Tailwind CSS</title>
 
+  <!-- Tailwind CSS desde CDN (para desarrollo) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Estilos personalizados de ClarifyJS -->
   <link rel="stylesheet" href="./styles.css">
 
   <script type="importmap">
@@ -19,8 +23,20 @@
   <script type="module" src="./index.ts"></script>
 </head>
 
-<body>
-  <div id="root"></div>
+<body class="bg-gray-100 min-h-screen py-8">
+  <div class="container mx-auto max-w-4xl px-4">
+    <header class="text-center mb-8">
+      <h1 class="text-4xl font-bold text-gray-900 mb-2">ClarifyJS 🚀</h1>
+      <p class="text-lg text-gray-600">Formularios dinámicos con Zod + Tailwind CSS</p>
+    </header>
+
+    <!-- El formulario se montará aquí automáticamente -->
+    <div id="root"></div>
+
+    <footer class="text-center mt-8 text-gray-500 text-sm">
+      <p>Hecho con ❤️ usando ClarifyJS</p>
+    </footer>
+  </div>
 </body>
 
 </html>

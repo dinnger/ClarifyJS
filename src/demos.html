@@ -7,96 +7,17 @@
   <title>ClarifyJS - Demos</title>
 
   <link rel="stylesheet" href="./styles.css">
-  <style>
-    body {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 40px 20px;
-    }
+  <!-- Tailwind CSS desde CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    h1 {
-      text-align: center;
-      color: #111827;
-      margin-bottom: 10px;
-    }
-
-    .subtitle {
-      text-align: center;
-      color: #6b7280;
-      margin-bottom: 40px;
-    }
-
-    .demo-selector {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-bottom: 40px;
-    }
-
-    .demo-button {
-      padding: 10px 20px;
-      border: 2px solid #e5e7eb;
-      background: white;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .demo-button:hover {
-      border-color: #3b82f6;
-      color: #3b82f6;
-    }
-
-    .demo-button.active {
-      background: #3b82f6;
-      color: white;
-      border-color: #3b82f6;
-    }
-
-    .demo-container {
-      margin-top: 20px;
-    }
-
-    .info-box {
-      background: #f0f9ff;
-      border: 1px solid #bfdbfe;
-      border-radius: 6px;
-      padding: 15px;
-      margin-bottom: 20px;
-    }
-
-    .info-box h3 {
-      margin: 0 0 10px 0;
-      color: #1e40af;
-    }
-
-    .info-box p {
-      margin: 0;
-      color: #1e3a8a;
-      font-size: 14px;
-    }
-  </style>
-
-  <script type="importmap">
-    {
-      "imports": {
-        "zod": "https://cdn.jsdelivr.net/npm/zod@3.22.4/+esm"
-      }
-    }
-  </script>
 
   <script type="module">
     import {
       registrationFormExample,
-      contactFormExample,
       addressFormExample,
       productFormExample,
       userProfileExample,
       customValidationExample,
-      manualStructureExample,
     } from "./examples.ts";
 
     const demos = {
@@ -104,11 +25,6 @@
         title: "Formulario de Registro",
         description: "Schema Zod completo con validaciones complejas y confirmación de contraseña",
         fn: registrationFormExample,
-      },
-      contact: {
-        title: "Formulario de Contacto",
-        description: "Estructura JSON manual con secciones personalizadas",
-        fn: contactFormExample,
       },
       address: {
         title: "Formulario de Dirección",
@@ -130,11 +46,6 @@
         description: "Expresiones regulares complejas y reglas de contraseña",
         fn: customValidationExample,
       },
-      manual: {
-        title: "Estructura Manual Completa",
-        description: "Ejemplo con secciones, boxes y todos los tipos de campo",
-        fn: manualStructureExample,
-      },
     };
 
     let currentDemo = null;
@@ -149,7 +60,7 @@
       });
 
       // Limpiar contenedor
-      const container = document.getElementById("demo-container");
+      const container = document.getElementById("root");
       container.innerHTML = "";
 
       // Mostrar info
@@ -174,7 +85,7 @@
       const selector = document.getElementById("demo-selector");
       Object.entries(demos).forEach(([key, demo]) => {
         const button = document.createElement("button");
-        button.className = "demo-button";
+        button.className = "demo-button bg-blue-500 text-white rounded-md px-2  m-0.5 hover:bg-blue-600 hover:shadow-[0_4px_12px_rgba(59,130,246,0.3)]";
         button.dataset.demo = key;
         button.textContent = demo.title;
         button.addEventListener("click", () => loadDemo(key));
@@ -196,7 +107,7 @@
 
   <div id="demo-selector" class="demo-selector"></div>
 
-  <div id="demo-container" class="demo-container"></div>
+  <div id="root" class="demo-container"></div>
 </body>
 
 </html>

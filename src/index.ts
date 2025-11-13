@@ -1,4 +1,4 @@
-import { z, ZodType, ZodTypeDef } from "zod";
+import { z, ZodType } from "zod";
 
 // ==================== TIPOS ====================
 type Structure = {
@@ -8,7 +8,6 @@ type Structure = {
 interface StructureItem {
   type: "text" | "number" | "email" | "password" | "textarea" | "select" | "checkbox" | "section" | "box";
   label?: string;
-  size?: number; // default 12 (grid system)
   placeholder?: string;
   description?: string;
   required?: boolean;
@@ -18,6 +17,7 @@ interface StructureItem {
     max?: number;
     options?: Array<{ value: string | number; label: string }>;
   };
+  style?: { size: number; className: string };
   children?: Structure;
   validation?: z.ZodTypeAny;
 }
@@ -32,13 +32,18 @@ interface FormConfig {
 
 // ==================== ZOD  ====================
 ZodType.prototype.label = function(label: string) {
-  // 'this.constructor' es la clase específica (ZodString, ZodObject, etc.)
   const C = this.constructor as any; 
-  
-  // Retornamos una nueva instancia del esquema con la nueva propiedad 'label' en su _def
   return new C({
     ...this._def,
-    label: label, // Aquí guardamos nuestro label
+    label, // Aquí guardamos nuestro label
+  });
+};
+
+ZodType.prototype.style = function({ size, className }: { size: number, className?: string }) {
+  const C = this.constructor as any; 
+  return new C({
+    ...this._def,
+    style: { size, className },
   });
 };
 
@@ -46,7 +51,7 @@ declare module 'zod' {
   // Añadimos 'label' a la definición base que todos los esquemas usan
   interface ZodTypeDef {
     label?: string;
-    style?:{size:number, class:string}
+    style?:{size:number, className:string}
   }
 
   // Añadimos el método .label() a la clase base ZodType
@@ -54,6 +59,7 @@ declare module 'zod' {
   interface ZodType {
     /** Define a label for the schema */
     label(label: string): this;
+    style({size, className}:{size:number, className?:string}):this;
   }
 }
 
@@ -66,8 +72,10 @@ class ZodExtractor {
    */
   static extractValidationInfo(zodSchema: z.ZodTypeAny): any {
     const info: any = {
-      required: !zodSchema.isOptional(),
+      required: !zodSchema.optional(),
       type: (zodSchema as any)._def.typeName,
+      label: (zodSchema as any)._def.label,
+      style: (zodSchema as any)._def.style,
     };
 
     // ZodString
@@ -138,7 +146,6 @@ class ZodExtractor {
    */
   static schemaToStructure(
     zodSchema: z.ZodObject<any>,
-    labels?: Record<string, string>
   ): Structure {
     const structure: Structure = {};
     const shape = zodSchema._def.shape;
@@ -149,7 +156,8 @@ class ZodExtractor {
 
       const item: StructureItem = {
         type: this.inferInputType(validationInfo),
-        label: labels?.[key] || this.formatLabel(key),
+        label: validationInfo.label || this.formatLabel(key),
+        style: validationInfo.style,
         required: validationInfo.required,
         validation: zodType,
       };
@@ -182,8 +190,7 @@ class ZodExtractor {
       if (validationInfo.shape) {
         item.type = "box";
         item.children = this.schemaToStructure(
-          z.object(validationInfo.shape),
-          labels
+          z.object(validationInfo.shape)
         );
       }
 
@@ -217,8 +224,21 @@ class ClarifyJS {
   private errors: Record<string, string[]> = {};
   private onSubmitCallback: ((data: any) => void) | undefined;
   private onChangeCallback: ((data: any, errors: any) => void) | undefined;
+  private targetElement: HTMLElement | null = null;
 
-  constructor(config: FormConfig) {
+  constructor(config: FormConfig, el?: string | HTMLElement) {
+    // Identificar el elemento donde se usará el formulario
+    if (el) {
+      if (typeof el === 'string') {
+        this.targetElement = document.querySelector(el);
+        if (!this.targetElement) {
+          throw new Error(`ClarifyJS: No se encontró el elemento con el selector "${el}"`);
+        }
+      } else {
+        this.targetElement = el;
+      }
+    }
+
     this.container = document.createElement("form");
     this.container.classList.add("clarifyjs-form");
     this.structure = config.structure;
@@ -237,6 +257,8 @@ class ClarifyJS {
    */
   render(): HTMLElement {
     this.container.innerHTML = "";
+    this.container.classList.add("clarifyjs-form", "bg-white", "p-8", "rounded-lg", "shadow-lg");
+    
     const fieldsContainer = this.renderStructure(this.structure);
     this.container.appendChild(fieldsContainer);
 
@@ -244,8 +266,33 @@ class ClarifyJS {
     const submitButton = document.createElement("button");
     submitButton.type = "submit";
     submitButton.textContent = "Submit";
-    submitButton.classList.add("clarifyjs-submit");
+    submitButton.classList.add(
+      "clarifyjs-submit",
+      "w-full",
+      "bg-blue-500",
+      "text-white",
+      "px-6",
+      "py-3",
+      "rounded-md",
+      "text-base",
+      "font-semibold",
+      "cursor-pointer",
+      "transition-all",
+      "hover:bg-blue-600",
+      "hover:-translate-y-0.5",
+      "hover:shadow-[0_4px_12px_rgba(59,130,246,0.3)]",
+      "active:translate-y-0",
+      "disabled:bg-gray-400",
+      "disabled:cursor-not-allowed",
+      "disabled:transform-none",
+      "mt-4"
+    );
     this.container.appendChild(submitButton);
+
+    // Si se especificó un elemento objetivo, montar automáticamente
+    if (this.targetElement) {
+      this.targetElement.appendChild(this.container);
+    }
 
     return this.container;
   }
@@ -258,16 +305,14 @@ class ClarifyJS {
     parentPath: string = ""
   ): HTMLElement {
     const container = document.createElement("div");
-    container.classList.add("clarifyjs-grid");
+    container.classList.add("clarifyjs-grid", "grid", "grid-cols-12", "gap-5", "mb-5");
 
     for (const [key, item] of Object.entries(structure)) {
+      console.log(item)
       const fieldPath = parentPath ? `${parentPath}.${key}` : key;
       const element = this.renderField(key, item, fieldPath);
-      
-      if (item.size) {
-        element.style.gridColumn = `span ${item.size}`;
-      }
-      
+      const size = item.style?.size || item.type==='box'? 12: 3
+      element.style.gridColumn = `span ${size}`;
       container.appendChild(element);
     }
 
@@ -283,7 +328,7 @@ class ClarifyJS {
     fieldPath: string
   ): HTMLElement {
     const wrapper = document.createElement("div");
-    wrapper.classList.add("clarifyjs-field");
+    wrapper.classList.add("clarifyjs-field", "flex", "flex-col", "gap-2");
     wrapper.setAttribute("data-type", item.type);
     wrapper.setAttribute("data-field", fieldPath);
 
@@ -291,7 +336,7 @@ class ClarifyJS {
     if (item.type === "section" || item.type === "box") {
       if (item.label) {
         const title = document.createElement("h3");
-        title.classList.add("clarifyjs-section-title");
+        title.classList.add("clarifyjs-section-title", "text-lg", "font-bold", "text-gray-900", "mb-4", "pb-2", "border-b-2", "border-gray-200");
         title.textContent = item.label;
         wrapper.appendChild(title);
       }
@@ -308,9 +353,13 @@ class ClarifyJS {
     if (item.label) {
       const label = document.createElement("label");
       label.htmlFor = fieldPath;
+      label.classList.add("font-semibold", "text-sm", "text-gray-700");
       label.textContent = item.label;
       if (item.required) {
-        label.innerHTML += ' <span class="required">*</span>';
+        const requiredSpan = document.createElement("span");
+        requiredSpan.classList.add("required", "text-red-500", "ml-0.5");
+        requiredSpan.textContent = "*";
+        label.appendChild(requiredSpan);
       }
       wrapper.appendChild(label);
     }
@@ -322,14 +371,14 @@ class ClarifyJS {
     // Descripción
     if (item.description) {
       const desc = document.createElement("small");
-      desc.classList.add("clarifyjs-description");
+      desc.classList.add("clarifyjs-description", "text-xs", "text-gray-600");
       desc.textContent = item.description;
       wrapper.appendChild(desc);
     }
 
     // Error container
     const errorContainer = document.createElement("div");
-    errorContainer.classList.add("clarifyjs-error");
+    errorContainer.classList.add("clarifyjs-error", "text-xs", "text-red-500", "min-h-[18px]", "opacity-0", "transition-opacity");
     errorContainer.setAttribute("data-error-for", fieldPath);
     wrapper.appendChild(errorContainer);
 
@@ -341,13 +390,16 @@ class ClarifyJS {
    */
   private createInput(item: StructureItem, fieldPath: string): HTMLElement {
     let input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    const baseClasses = "w-full px-3 py-2 border-2 border-gray-300 rounded-md text-sm font-inherit transition-all focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100".split(" ");
 
     switch (item.type) {
       case "textarea":
         input = document.createElement("textarea");
+        input.classList.add(...baseClasses, "min-h-[100px]", "resize-y");
         break;
       case "select":
         input = document.createElement("select");
+        input.classList.add(...baseClasses, "cursor-pointer");
         if (item.properties?.options) {
           item.properties.options.forEach((opt) => {
             const option = document.createElement("option");
@@ -360,10 +412,12 @@ class ClarifyJS {
       case "checkbox":
         input = document.createElement("input");
         input.type = "checkbox";
+        input.classList.add("w-auto", "h-[18px]", "cursor-pointer", "rounded", "border-gray-300", "text-blue-600", "focus:ring-2", "focus:ring-blue-500");
         break;
       default:
         input = document.createElement("input");
         input.type = item.type;
+        input.classList.add(...baseClasses);
     }
 
     input.id = fieldPath;
@@ -379,6 +433,7 @@ class ClarifyJS {
 
     if (item.properties?.disabled) {
       input.disabled = true;
+      input.classList.add("bg-gray-100", "cursor-not-allowed", "opacity-60");
     }
 
     if (item.properties?.min !== undefined && input instanceof HTMLInputElement) {
@@ -445,21 +500,37 @@ class ClarifyJS {
 
       if (errorContainer) {
         errorContainer.textContent = errors.join(", ");
-        errorContainer.classList.add("visible");
+        errorContainer.classList.remove("opacity-0");
+        errorContainer.classList.add("opacity-100");
       }
 
       const field = this.container.querySelector(`[data-field="${fieldPath}"]`);
       field?.classList.add("has-error");
+      
+      // Añadir clases de error al input
+      const input = this.container.querySelector(`[name="${fieldPath}"]`);
+      if (input) {
+        input.classList.remove("border-gray-300", "focus:border-blue-500", "focus:ring-blue-100");
+        input.classList.add("border-red-500", "focus:border-red-500", "focus:ring-red-100");
+      }
     } else {
       delete this.errors[fieldPath];
 
       if (errorContainer) {
         errorContainer.textContent = "";
-        errorContainer.classList.remove("visible");
+        errorContainer.classList.remove("opacity-100");
+        errorContainer.classList.add("opacity-0");
       }
 
       const field = this.container.querySelector(`[data-field="${fieldPath}"]`);
       field?.classList.remove("has-error");
+      
+      // Restaurar clases normales al input
+      const input = this.container.querySelector(`[name="${fieldPath}"]`);
+      if (input && !input.classList.contains("w-auto")) { // No aplicar a checkboxes
+        input.classList.remove("border-red-500", "focus:border-red-500", "focus:ring-red-100");
+        input.classList.add("border-gray-300", "focus:border-blue-500", "focus:ring-blue-100");
+      }
     }
   }
 
@@ -598,18 +669,18 @@ class ClarifyJS {
   static fromSchema(
     schema: z.ZodObject<any>,
     config?: {
-      labels?: Record<string, string>;
+      el?: string | HTMLElement;
       onSubmit?: (data: any) => void;
       onChange?: (data: any, errors: any) => void;
     }
   ): ClarifyJS {
-    const structure = ZodExtractor.schemaToStructure(schema, config?.labels);
+    const structure = ZodExtractor.schemaToStructure(schema);
     return new ClarifyJS({
       structure,
       schema,
       onSubmit: config?.onSubmit,
       onChange: config?.onChange,
-    });
+    }, config?.el);
   }
 }
 
@@ -629,19 +700,9 @@ const userSchema = z.object({
   }),
 });
 
-// Crear formulario desde el schema
+// Crear formulario desde el schema con selector de elemento
 const form = ClarifyJS.fromSchema(userSchema, {
-  labels: {
-    firstName: "Nombre",
-    lastName: "Apellido",
-    email: "Correo Electrónico",
-    age: "Edad",
-    address: "Dirección",
-    street: "Calle",
-    city: "Ciudad",
-    state: "Estado",
-    zip: "Código Postal",
-  },
+  el: "#root", // Selector CSS del elemento donde se montará el formulario
   onSubmit: (data) => {
     console.log("Formulario enviado:", data);
     alert("Formulario válido! Ver consola para datos");
@@ -652,11 +713,14 @@ const form = ClarifyJS.fromSchema(userSchema, {
   },
 });
 
-// Renderizar
-const root = document.getElementById("root");
-if (root) {
-  root.appendChild(form.render());
-}
+// Renderizar (se monta automáticamente en #root si se especificó 'el')
+form.render();
+
+// También puedes renderizar manualmente sin especificar 'el':
+// const root = document.getElementById("root");
+// if (root) {
+//   root.appendChild(form.render());
+// }
 
 // También puedes exportar para usar como librería
 export { ClarifyJS, ZodExtractor, z };

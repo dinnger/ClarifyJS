@@ -1,3 +1,8 @@
+/* ==================== TAILWIND BASE ==================== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ==================== CLARIFYJS STYLES ==================== */
 
 * {

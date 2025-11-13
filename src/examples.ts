@@ -4,13 +4,13 @@ import type { Structure } from "./index";
 // ==================== EJEMPLO 1: FORMULARIO DE REGISTRO ====================
 export function registrationFormExample() {
   const registrationSchema = z.object({
-    firstName: z.string().min(2, "Mínimo 2 caracteres").label("Nombre"),
-    lastName: z.string().min(2, "Mínimo 2 caracteres"),
-    email: z.string().email("Email inválido"),
-    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
-    confirmPassword: z.string().style,
-    age: z.number().min(18, "Debes ser mayor de edad").max(120),
-    country: z.enum(["México", "USA", "España", "Argentina"]),
+    firstName: z.string().min(2, "Mínimo 2 caracteres").label("Nombre").style({size:6}),
+    lastName: z.string().min(2, "Mínimo 2 caracteres").label("Apellido").style({size:6}),
+    email: z.string().email("Email inválido").label("Correo Electrónico"),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").label("Contraseña Segura"),
+    confirmPassword: z.string().label("Confirmar Contraseña"),
+    age: z.number().min(18, "Debes ser mayor de edad").max(120).label("Edad"),
+    country: z.enum(["México", "USA", "España", "Argentina"]).label("País"),
     acceptTerms: z.boolean().refine(val => val === true, {
       message: "Debes aceptar los términos",
     }).label("Acepto términos y condiciones"),
@@ -20,16 +20,6 @@ export function registrationFormExample() {
   });
 
   return ClarifyJS.fromSchema(registrationSchema, {
-    labels: {
-      firstName: "Nombre",
-      lastName: "Apellido",
-      email: "Correo Electrónico",
-      password: "Contraseña",
-      confirmPassword: "Confirmar Contraseña",
-      age: "Edad",
-      country: "País",
-      acceptTerms: "Acepto términos y condiciones",
-    },
     onSubmit: (data) => {
       console.log("Registro exitoso:", data);
       alert("¡Registro exitoso! Ver consola.");
@@ -37,60 +27,6 @@ export function registrationFormExample() {
   });
 }
 
-// ==================== EJEMPLO 2: FORMULARIO DE CONTACTO ====================
-export function contactFormExample() {
-  const structure: Structure = {
-    personalInfo: {
-      type: "section",
-      label: "Información Personal",
-      children: {
-        name: {
-          type: "text",
-          label: "Nombre Completo",
-          required: true,
-          placeholder: "Juan Pérez",
-          size: 6,
-        },
-        email: {
-          type: "email",
-          label: "Email",
-          required: true,
-          placeholder: "juan@ejemplo.com",
-          size: 6,
-        },
-      },
-    },
-    message: {
-      type: "section",
-      label: "Mensaje",
-      children: {
-        subject: {
-          type: "text",
-          label: "Asunto",
-          required: true,
-          placeholder: "¿En qué podemos ayudarte?",
-          size: 12,
-        },
-        body: {
-          type: "textarea",
-          label: "Mensaje",
-          required: true,
-          placeholder: "Escribe tu mensaje aquí...",
-          description: "Máximo 500 caracteres",
-          size: 12,
-        },
-      },
-    },
-  };
-
-  return new ClarifyJS({
-    structure,
-    onSubmit: (data) => {
-      console.log("Contacto enviado:", data);
-      alert("¡Mensaje enviado! Ver consola.");
-    },
-  });
-}
 
 // ==================== EJEMPLO 3: FORMULARIO CON DIRECCIÓN ====================
 export function addressFormExample() {
@@ -107,16 +43,6 @@ export function addressFormExample() {
   });
 
   return ClarifyJS.fromSchema(addressSchema, {
-    labels: {
-      fullName: "Nombre Completo",
-      address: "Dirección de Envío",
-      street: "Calle",
-      number: "Número",
-      city: "Ciudad",
-      state: "Estado",
-      zipCode: "Código Postal",
-      phone: "Teléfono",
-    },
     onSubmit: (data) => {
       console.log("Dirección guardada:", data);
       alert("¡Dirección guardada! Ver consola.");
@@ -137,15 +63,6 @@ export function productFormExample() {
   });
 
   return ClarifyJS.fromSchema(productSchema, {
-    labels: {
-      productName: "Nombre del Producto",
-      description: "Descripción",
-      price: "Precio ($)",
-      category: "Categoría",
-      stock: "Stock Disponible",
-      isActive: "Producto Activo",
-      discount: "Descuento (%)",
-    },
     onSubmit: (data) => {
       console.log("Producto creado:", data);
       alert("¡Producto creado! Ver consola.");
@@ -176,20 +93,6 @@ export function userProfileExample() {
   });
 
   return ClarifyJS.fromSchema(profileSchema, {
-    labels: {
-      username: "Nombre de Usuario",
-      email: "Email",
-      bio: "Biografía",
-      website: "Sitio Web",
-      socialMedia: "Redes Sociales",
-      twitter: "Twitter",
-      github: "GitHub",
-      linkedin: "LinkedIn",
-      preferences: "Preferencias",
-      newsletter: "Recibir newsletter",
-      notifications: "Notificaciones por email",
-      publicProfile: "Perfil público",
-    },
     onSubmit: (data) => {
       console.log("Perfil actualizado:", data);
       alert("¡Perfil actualizado! Ver consola.");
@@ -223,113 +126,9 @@ export function customValidationExample() {
   });
 
   return ClarifyJS.fromSchema(customSchema, {
-    labels: {
-      email: "Correo Electrónico",
-      password: "Contraseña Segura",
-      username: "Nombre de Usuario",
-      age: "Edad",
-      website: "Sitio Web (opcional)",
-    },
     onSubmit: (data) => {
       console.log("Validación exitosa:", data);
       alert("¡Todas las validaciones pasaron! Ver consola.");
-    },
-  });
-}
-
-// ==================== EJEMPLO 7: FORMULARIO MANUAL CON ESTRUCTURA JSON ====================
-export function manualStructureExample() {
-  const structure: Structure = {
-    header: {
-      type: "section",
-      label: "📋 Información del Proyecto",
-      children: {
-        projectName: {
-          type: "text",
-          label: "Nombre del Proyecto",
-          placeholder: "Mi Proyecto Increíble",
-          required: true,
-          description: "Nombre descriptivo para tu proyecto",
-          size: 8,
-        },
-        projectId: {
-          type: "text",
-          label: "ID",
-          size: 4,
-          properties: {
-            disabled: true,
-          },
-        },
-      },
-    },
-    details: {
-      type: "box",
-      label: "📝 Detalles",
-      children: {
-        description: {
-          type: "textarea",
-          label: "Descripción",
-          placeholder: "Describe tu proyecto...",
-          required: true,
-          size: 12,
-        },
-        priority: {
-          type: "select",
-          label: "Prioridad",
-          required: true,
-          size: 6,
-          properties: {
-            options: [
-              { value: "low", label: "Baja" },
-              { value: "medium", label: "Media" },
-              { value: "high", label: "Alta" },
-              { value: "critical", label: "Crítica" },
-            ],
-          },
-        },
-        estimatedHours: {
-          type: "number",
-          label: "Horas Estimadas",
-          required: true,
-          size: 6,
-          properties: {
-            min: 1,
-            max: 1000,
-          },
-        },
-      },
-    },
-    flags: {
-      type: "section",
-      label: "⚙️ Opciones",
-      children: {
-        isPublic: {
-          type: "checkbox",
-          label: "Proyecto Público",
-          size: 4,
-        },
-        allowCollaboration: {
-          type: "checkbox",
-          label: "Permitir Colaboración",
-          size: 4,
-        },
-        sendNotifications: {
-          type: "checkbox",
-          label: "Enviar Notificaciones",
-          size: 4,
-        },
-      },
-    },
-  };
-
-  return new ClarifyJS({
-    structure,
-    onSubmit: (data) => {
-      console.log("Proyecto creado:", data);
-      alert("¡Proyecto creado! Ver consola.");
-    },
-    onChange: (data, errors) => {
-      console.log("Actualización:", { data, errors });
     },
   });
 }

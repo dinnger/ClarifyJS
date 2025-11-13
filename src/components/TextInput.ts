@@ -1,5 +1,4 @@
-import type { ComponentConfig, RenderConfig } from './types';
-
+import type { ComponentConfig, RenderConfig } from "../interface";
 /**
  * Componente de Input de texto estándar
  */
@@ -17,8 +16,8 @@ export const TextInput: ComponentConfig = {
     input.name = config.fieldPath;
     input.classList.add(...(TextInput.baseClasses || []));
 
-    if (config.placeholder) {
-      input.placeholder = config.placeholder;
+    if (config.properties?.placeholder) {
+      input.placeholder = config.properties?.placeholder;
     }
 
     if (config.required) {

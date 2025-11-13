@@ -1,4 +1,4 @@
-import type { ComponentConfig, RenderConfig } from './types';
+import type { ComponentConfig, RenderConfig } from "../interface";
 
 /**
  * Componente de Password con toggle show/hide
@@ -21,8 +21,8 @@ export const PasswordInput: ComponentConfig = {
     input.name = config.fieldPath;
     input.classList.add(...(PasswordInput.baseClasses || []));
 
-    if (config.placeholder) {
-      input.placeholder = config.placeholder;
+    if (config.properties?.placeholder) {
+      input.placeholder = config.properties?.placeholder;
     }
 
     if (config.required) {

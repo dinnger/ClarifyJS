@@ -1,4 +1,4 @@
-import type { ComponentConfig, RenderConfig } from './types';
+import type { ComponentConfig, RenderConfig } from "../interface";
 
 /**
  * Componente de Select (dropdown)

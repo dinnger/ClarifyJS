@@ -8,7 +8,6 @@ export { SelectInput } from './SelectInput';
 export { CheckboxInput } from './CheckboxInput';
 export { PasswordInput } from './PasswordInput';
 
-export type { ComponentConfig, RenderConfig } from './types';
 
 /**
  * Mapa de componentes por defecto por tipo
@@ -18,7 +17,7 @@ import { TextArea } from './TextArea';
 import { SelectInput } from './SelectInput';
 import { CheckboxInput } from './CheckboxInput';
 import { PasswordInput } from './PasswordInput';
-import type { ComponentConfig } from './types';
+import type { ComponentConfig } from '../interface';
 
 export const DefaultComponents: Record<string, ComponentConfig> = {
   // Tipos de Zod

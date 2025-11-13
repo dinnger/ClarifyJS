@@ -1,4 +1,4 @@
-import type { ComponentConfig, RenderConfig } from './types';
+import type { ComponentConfig, RenderConfig } from "../interface";
 
 /**
  * Componente de Textarea
@@ -17,8 +17,8 @@ export const TextArea: ComponentConfig = {
     textarea.name = config.fieldPath;
     textarea.classList.add(...(TextArea.baseClasses || []));
 
-    if (config.placeholder) {
-      textarea.placeholder = config.placeholder;
+    if (config.properties?.placeholder) {
+      textarea.placeholder = config.properties?.placeholder;
     }
 
     if (config.required) {

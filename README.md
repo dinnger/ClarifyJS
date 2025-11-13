@@ -319,6 +319,40 @@ form.setData({
 });
 ```
 
+#### `form.setFieldProperty(fieldPath, property, value): void`
+Cambia dinámicamente las propiedades de cualquier campo del formulario en tiempo real.
+
+```typescript
+// Ocultar/mostrar campos
+form.setFieldProperty("companyName", "visible", false);
+
+// Cambiar tamaño del grid (1-12 columnas)
+form.setFieldProperty("email", "size", 12);
+
+// Habilitar/deshabilitar campos
+form.setFieldProperty("zipCode", "disabled", true);
+
+// Actualizar opciones de un select
+form.setFieldProperty("country", "options", [
+  { value: "mx", label: "México" },
+  { value: "us", label: "USA" }
+]);
+
+// Cambiar límites min/max
+form.setFieldProperty("age", "min", 18);
+form.setFieldProperty("age", "max", 65);
+
+// Aplicar clases CSS personalizadas
+form.setFieldProperty("email", "className", "bg-yellow-100 border-yellow-500");
+
+// Cambiar máscaras
+form.setFieldProperty("phone", "mask", "###-###-####");
+```
+
+**Propiedades soportadas**: `visible`, `size`, `disabled`, `className`, `min`, `max`, `options`, `mask`
+
+**📖 Ver guía completa**: [SETFIELDPROPERTY_GUIDE.md](./SETFIELDPROPERTY_GUIDE.md) | **🎮 Demo interactiva**: `setfieldproperty-demo.html`
+
 ## 🎨 Personalización de Estilos
 
 ClarifyJS usa **Tailwind CSS** para todos sus estilos. Puedes personalizar la apariencia de varias formas:

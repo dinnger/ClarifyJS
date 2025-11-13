@@ -59,52 +59,6 @@ body {
   margin-left: 2px;
 }
 
-.clarifyjs-field input,
-.clarifyjs-field textarea,
-.clarifyjs-field select {
-  padding: 10px 12px;
-  border: 2px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 14px;
-  font-family: inherit;
-  transition: all 0.2s ease;
-  width: 100%;
-}
-
-.clarifyjs-field input:focus,
-.clarifyjs-field textarea:focus,
-.clarifyjs-field select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.clarifyjs-field textarea {
-  min-height: 100px;
-  resize: vertical;
-}
-
-.clarifyjs-field input[type="checkbox"] {
-  width: auto;
-  height: 18px;
-  cursor: pointer;
-}
-
-.clarifyjs-field input:disabled,
-.clarifyjs-field textarea:disabled,
-.clarifyjs-field select:disabled {
-  background-color: #f3f4f6;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-/* ==================== DESCRIPCIÓN ==================== */
-
-.clarifyjs-description {
-  font-size: 12px;
-  color: #6b7280;
-  margin: 0;
-}
 
 /* ==================== ERRORES ==================== */
 
@@ -158,38 +112,6 @@ body {
 .clarifyjs-field[data-type="box"] .clarifyjs-section-title {
   font-size: 16px;
   border-bottom: 1px solid #d1d5db;
-}
-
-/* ==================== BOTÓN SUBMIT ==================== */
-
-.clarifyjs-submit {
-  background: #3b82f6;
-  color: white;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 100%;
-  margin-top: 10px;
-}
-
-.clarifyjs-submit:hover {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.clarifyjs-submit:active {
-  transform: translateY(0);
-}
-
-.clarifyjs-submit:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-  transform: none;
 }
 
 /* ==================== RESPONSIVE ==================== */

@@ -1,4 +1,4 @@
-import type { ComponentConfig } from "./components";
+import type { ComponentConfig } from "./interface";
 
 /**
  * Componente Toggle Switch personalizado para campos booleanos
@@ -144,12 +144,14 @@ export const StyledCheckbox: ComponentConfig = {
     checkboxContainer.appendChild(box);
     checkboxContainer.appendChild(checkIcon);
 
-    const textLabel = document.createElement('span');
-    textLabel.classList.add('text-sm', 'font-medium', 'text-gray-700', 'group-hover:text-blue-600', 'transition-colors');
-    textLabel.textContent = config.placeholder || 'Checkbox';
-
     wrapper.appendChild(checkboxContainer);
-    wrapper.appendChild(textLabel);
+
+    if (config.properties?.placeholder) {
+      const textLabel = document.createElement('span');
+      textLabel.classList.add('text-sm', 'font-medium', 'text-gray-700', 'group-hover:text-blue-600', 'transition-colors');
+      textLabel.textContent = config.properties?.placeholder ;
+      wrapper.appendChild(textLabel);
+    }
 
     return wrapper;
   },

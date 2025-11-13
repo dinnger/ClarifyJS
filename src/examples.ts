@@ -9,7 +9,12 @@ export function registrationFormExample() {
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").label("Contras Segura").password(),
     confirmPassword: z.string().label("Confirmar Contraseña").password(),
     country: z.enum({mx: "México", us: "USA", es: "España", ar: "Argentina"}).label("País"),
-    acceptTerms: z.boolean().label("Terminos y condiciones").optional(),
+    zipCode: z.string().length(5, "Código postal debe ser 5 dígitos").label("Código Postal").properties({mask: "#####"}),
+    acceptTerms: z.boolean().properties({size:5,placeholder: "Acepto los términos y condiciones"})
+    .refine(data => data === true, {
+      message: "Debes aceptar los términos y condiciones",
+      path: ["acceptTerms"],
+    }),
     age: z.number().min(18, "Debes ser mayor de edad").max(120).label("Edad").properties({visible:false}),
   }).refine(data => data.password === data.confirmPassword, {
     message: "Las contraseñas no coinciden",

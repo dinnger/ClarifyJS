@@ -21,16 +21,10 @@
       masksExample,
     } from "./examples.ts";
     import { customComponentsExample } from "./custom-components-example.ts";
-    import {
-      initializeGlobalComponents,
-      simpleFormWithGlobalComponents,
-      formWithOverrides,
-      registrationFormExample as globalRegistrationExample
-    } from "./global-components-example.ts";
+
 
     // ==================== INICIALIZAR COMPONENTES GLOBALES ====================
     // Esto se ejecuta UNA VEZ al inicio de la aplicación
-    initializeGlobalComponents();
     console.log("🎨 Componentes globales inicializados para toda la aplicación");
 
     const demos = {
@@ -69,21 +63,7 @@
         description: "Toggle switch y checkbox estilizados con HTML personalizado (config local)",
         fn: customComponentsExample,
       },
-      globalSimple: {
-        title: "Componentes Globales - Simple",
-        description: "Formulario simple usando componentes registrados globalmente",
-        fn: simpleFormWithGlobalComponents,
-      },
-      globalOverride: {
-        title: "Componentes Globales - Sobrescritura",
-        description: "Formulario que sobrescribe componentes globales en campos específicos",
-        fn: formWithOverrides,
-      },
-      globalRegistration: {
-        title: "Componentes Globales - Registro",
-        description: "Formulario de registro completo con componentes globales automáticos",
-        fn: globalRegistrationExample,
-      },
+
     };
 
     let currentDemo = null;

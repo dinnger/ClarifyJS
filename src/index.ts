@@ -1,326 +1,18 @@
-import { z as zodOriginal, ZodType, type ZodTypeAny, type ZodError } from "zod";
-import type { ComponentConfig } from "./components";
+
+import type { ZodError, zodOrigin, ComponentConfig, Structure, FormConfig, StructureItem, FieldPaths, InferSchemaType } from "./interface";
 import { DefaultComponents } from "./components";
+import { ZodExtractor, NestedObjectUtil, StructureUtil } from "./utils";
+import { z, ValidationHelper, MaskHelper, DOMHelper, FormPopulateHelper } from "./helper";
 
-// Crear una versión extendida de z que soporte enum con objetos
-const createExtendedZ = () => {
-  // Copiar todas las propiedades de z
-  const extendedZ = { ...zodOriginal } as typeof zodOriginal;
-  
-  // Wrapper para z.enum que soporta objetos {key: label}
-  const originalEnum = zodOriginal.enum.bind(zodOriginal);
-  (extendedZ as any).enum = function(values: any) {
-    // Si es un objeto (no array), extraer las claves para validación
-    if (typeof values === 'object' && !Array.isArray(values)) {
-      const keys = Object.keys(values) as [string, ...string[]];
-      const enumSchema = originalEnum(keys);
-      // Guardar el mapa de valores para el extractor
-      (enumSchema as any)._def.valuesMap = values;
-      return enumSchema;
-    }
-    // Comportamiento original para arrays
-    return originalEnum(values);
-  };
-  
-  return extendedZ;
-};
-
-const z = createExtendedZ();
-
-// ==================== TIPOS ====================
-type Structure = {
-  [key: string]: StructureItem;
-};
-
-interface StructureItem {
-  type: "text" | "number" | "email" | "password" | "textarea" | "select" | "boolean" |  "section" | "box";
-  label?: string;
-  placeholder?: string;
-  description?: string;
-  required?: boolean;
-  properties?: {
-    visible?: boolean;
-    disabled?: boolean;
-    min?: number;
-    max?: number;
-    size?: number; 
-    className?: string;
-    options?: Array<{ value: string | number; label: string }>;
-    mask?: string | RegExp;
-  };
-  isPassword?: boolean;
-  customComponent?: ComponentConfig;
-  children?: Structure;
-  validation?: ZodTypeAny;
-}
-
-interface FormConfig {
-  structure: Structure;
-  schema?: zodOriginal.ZodObject<any> | undefined;
-  onSubmit?: ((data: any) => void) | undefined;
-  onChange?: ((data: any, errors: any) => void) | undefined;
-  onValidate?: ((isValid: boolean, data: any, errors: any) => void) | undefined;
-  components?: Record<string, ComponentConfig> | undefined;
-}
-
-
-// ==================== ZOD  ====================
-ZodType.prototype.label = function(label: string) {
-  const C = this.constructor as any; 
-  return new C({
-    ...this._def,
-    label, // Aquí guardamos nuestro label
-  });
-};
-
-ZodType.prototype.properties = function(properties: StructureItem["properties"]) {
-  const C = this.constructor as any; 
-  return new C({
-    ...this._def,
-    properties,
-  });
-};
-
-
-
-ZodType.prototype.password = function(withToggle: boolean = true) {
-  const C = this.constructor as any; 
-  return new C({
-    ...this._def,
-    isPassword: withToggle,
-  });
-};
-
-ZodType.prototype.component = function(component: ComponentConfig) {
-  const C = this.constructor as any; 
-  return new C({
-    ...this._def,
-    customComponent: component,
-  });
-};
-
-declare module 'zod' {
-  // Añadimos 'label' a la definición base que todos los esquemas usan
-  interface ZodTypeDef {
-    label?: string;
-    properties?: StructureItem["properties"];
-    valuesMap?: Record<string, string>;
-    isPassword?: boolean;
-    customComponent?: ComponentConfig;
-  }
-
-  // Añadimos el método .label() a la clase base ZodType
-  // 'this' asegura que el encadenamiento (chaining) siga funcionando
-  interface ZodType {
-    /** Define a label for the schema */
-    label(label: string): this;
-    /** Define a set of properties for the schema */
-    properties(properties:StructureItem["properties"]):this;
-    /** Mark as password field with optional show/hide toggle */
-    password(withToggle?: boolean): this;
-    /** Define a custom component for rendering this field */
-    component(component: ComponentConfig): this;
-  }
-}
-
-
-
-// ==================== UTILIDADES ZOD ====================
-class ZodExtractor {
-  /**
-   * Extrae información de validación desde un esquema Zod
-   */
-  static extractValidationInfo(zodSchema: ZodTypeAny): any {
-    
-    const _def = (zodSchema as any)._def
-
-
-    if (zodSchema instanceof zodOriginal.ZodOptional) {
-      (zodSchema as any)._def.innerType._def.optional = true;
-      return this.extractValidationInfo(_def.innerType);
-    }
-
-    // ZodUnion - extraer el primer tipo válido que no sea literal vacío
-    if (zodSchema instanceof zodOriginal.ZodUnion) {
-      const options = _def.options || [];
-      // Buscar el primer tipo que no sea un literal vacío
-      for (const option of options) {
-        const optionDef = (option as any)._def;
-        // Saltar literales vacíos como z.literal("")
-        if (option instanceof zodOriginal.ZodLiteral && optionDef.value === "") {
-          continue;
-        }
-        // Usar el primer tipo válido encontrado
-        return this.extractValidationInfo(option);
-      }
-      // Si todos son literales vacíos, usar el primero
-      return this.extractValidationInfo(options[0]);
-    }
-
-    const info: any = {
-      required: !_def.optional,
-      type: _def.type,
-      label: _def.label,
-      properties: _def.properties,
-      isPassword: _def.isPassword,
-      customComponent: _def.customComponent,
-    };
-
-    // ZodString
-    if (zodSchema instanceof zodOriginal.ZodString) {
-      const checks = _def.checks || [];
-      checks.forEach((check: any) => {
-        switch (check.kind) {
-          case "min":
-            info.minLength = check.value;
-            break;
-          case "max":
-            info.maxLength = check.value;
-            break;
-          case "email":
-            info.isEmail = true;
-            break;
-          case "url":
-            info.isUrl = true;
-            break;
-          case "regex":
-            info.pattern = check.regex;
-            break;
-        }
-      });
-    }
-
-    // ZodNumber
-    if (zodSchema instanceof zodOriginal.ZodNumber) {
-      const checks = _def.checks || [];
-      checks.forEach((check: any) => {
-        switch (check.kind) {
-          case "min":
-            info.min = check.value;
-            info.minInclusive = check.inclusive;
-            break;
-          case "max":
-            info.max = check.value;
-            info.maxInclusive = check.inclusive;
-            break;
-          case "int":
-            info.isInt = true;
-            break;
-        }
-      });
-    }
-
-    // ZodEnum
-    if (zodSchema instanceof zodOriginal.ZodEnum) {
-      const values = _def.entries;
-      const valuesMap = _def.valuesMap;
-      if (valuesMap) {
-        info.options = valuesMap;
-      } else if (Array.isArray(values)) {
-        info.options = values.reduce((acc: any, val: string) => {
-          acc[val] = val;
-          return acc;
-        }, {});
-      } else {
-        info.options = values;
-      }
-    }
-
-    // ZodObject (para objetos anidados)
-    if (zodSchema instanceof zodOriginal.ZodObject) {
-      info.shape = _def.shape;
-    }
-
-    // ZodOptional
-    if (zodSchema instanceof zodOriginal.ZodOptional) {
-      info.required = false;
-      return { ...info, ...this.extractValidationInfo((zodSchema as any)._def.innerType) };
-    }
-
-    return info;
-  }
-
-  /**
-   * Genera estructura de formulario desde un esquema Zod
-   */
-  static schemaToStructure(
-    zodSchema: zodOriginal.ZodObject<any>,
-  ): Structure {
-    const structure: Structure = {};
-    const shape = zodSchema._def.shape;
-
-    for (const [key, value] of Object.entries(shape)) {
-      const zodType = value as ZodTypeAny;
-      const validationInfo = this.extractValidationInfo(zodType);
-
-      // Detectar automáticamente campos password por nombre
-      const isPasswordField = validationInfo.isPassword;
-      const item: StructureItem = {
-        type: isPasswordField && validationInfo.type === 'string' ? 'password' : validationInfo.type,
-        label: validationInfo.label || this.formatLabel(key),
-        properties: validationInfo.properties,
-        isPassword: isPasswordField,
-        customComponent: validationInfo.customComponent,
-        required: validationInfo.required,
-        validation: zodType,
-      };
-
-      // Configurar propiedades según el tipo
-      if (validationInfo.minLength) {
-        item.properties = { ...item.properties, min: validationInfo.minLength };
-      }
-      if (validationInfo.maxLength) {
-        item.properties = { ...item.properties, max: validationInfo.maxLength };
-      }
-      if (validationInfo.min !== undefined) {
-        item.properties = { ...item.properties, min: validationInfo.min };
-      }
-      if (validationInfo.max !== undefined) {
-        item.properties = { ...item.properties, max: validationInfo.max };
-      }
-      if (validationInfo.options) {
-        item.type = "select";
-        item.properties = {
-          ...item.properties,
-          options: Object.entries(validationInfo.options).map((opt: any) => ({
-            value: opt[0],
-            label: opt[1],
-          })),
-        };
-      }
-
-      // Objetos anidados
-      if (validationInfo.shape) {
-        item.type = "box";
-        item.children = this.schemaToStructure(
-          z.object(validationInfo.shape)
-        );
-      }
-
-      structure[key] = item;
-    }
-
-    return structure;
-  }
-
-
-
-  private static formatLabel(key: string): string {
-    return key
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (str) => str.toUpperCase())
-      .trim();
-  }
-}
 
 // ==================== CLARIFYJS - MOTOR DE FORMULARIOS ====================
-class ClarifyJS {
+class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<any>> {
   // Registro global de componentes
   private static componentRegistry: Map<string, ComponentConfig> = new Map();
   
   private container: HTMLElement;
   private structure: Structure;
-  private schema: zodOriginal.ZodObject<any> | undefined;
+  private schema: TSchema | undefined;
   private formData: Record<string, any> = {};
   private errors: Record<string, string[]> = {};
   private previousErrorFields: Set<string> = new Set();
@@ -346,7 +38,7 @@ class ClarifyJS {
     this.container = document.createElement("form");
     this.container.classList.add("clarifyjs-form");
     this.structure = config.structure;
-    this.schema = config.schema;
+    this.schema = config.schema as TSchema | undefined;
     this.onSubmitCallback = config.onSubmit;
     this.onChangeCallback = config.onChange;
     this.onValidateCallback = config.onValidate;
@@ -414,7 +106,6 @@ class ClarifyJS {
   render(): HTMLElement {
     this.container.innerHTML = "";
     this.container.classList.add("clarifyjs-form", "bg-white", "p-8", "rounded-lg", "shadow-lg");
-    
     const fieldsContainer = this.renderStructure(this.structure);
     this.container.appendChild(fieldsContainer);
 
@@ -434,14 +125,22 @@ class ClarifyJS {
     parentPath: string = ""
   ): HTMLElement {
     const container = document.createElement("div");
-    container.classList.add("clarifyjs-grid", "grid", "grid-cols-12", "gap-5", "mb-5");
+    container.classList.add("clarifyjs-grid", "grid", "grid-cols-12", "gap-3", "mb-5");
 
     for (const [key, item] of Object.entries(structure)) {
-      const fieldPath = parentPath ? `${parentPath}.${key}` : key;
+      const fieldPath = (parentPath ? `${parentPath}.${key}` : key) as  TSchema extends zodOrigin.ZodObject<any> ? FieldPaths<InferSchemaType<TSchema>> : string;
       const element = this.renderField(key, item, fieldPath);
-      const size = item.properties?.size || (item.type === 'box'? 12: 3)
+      const size =  (item.type === 'box'? 12: 3)
       element.style.gridColumn = `span ${size}`;
+
       container.appendChild(element);
+
+      // Aplicar propiedades
+      if (item.properties) {
+        Object.entries(item.properties).forEach(([key, value]) => {
+          this.setFieldProperty(fieldPath, key as keyof NonNullable<StructureItem["properties"]>, value,container);
+        });
+      }
     }
 
     return container;
@@ -453,7 +152,7 @@ class ClarifyJS {
   private renderField(
     _key: string,
     item: StructureItem,
-    fieldPath: string
+    fieldPath:  TSchema extends zodOrigin.ZodObject<any> ? FieldPaths<InferSchemaType<TSchema>> : string
   ): HTMLElement {
     const wrapper = document.createElement("div");
     wrapper.classList.add("clarifyjs-field", "flex", "flex-col", "gap-2");
@@ -478,7 +177,7 @@ class ClarifyJS {
     }
 
     // Label
-    if (item.label) {
+    if (item.label ) {
       const label = document.createElement("label");
       label.htmlFor = fieldPath;
       label.classList.add("font-semibold", "text-sm", "text-gray-700");
@@ -516,21 +215,21 @@ class ClarifyJS {
   /**
    * Crea el input apropiado según el tipo usando el sistema de componentes
    */
-  private createInput(item: StructureItem, fieldPath: string): HTMLElement {
+  private createInput(item: StructureItem, fieldPath:  TSchema extends zodOrigin.ZodObject<any> ? FieldPaths<InferSchemaType<TSchema>> : string): HTMLElement {
     // Obtener componente (personalizado Zod, de instancia, global o default)
     const component = item.customComponent || this.getComponent(item.type, fieldPath);
     
     if (!component) {
       throw new Error(`No se encontró componente para el tipo "${item.type}"`);
     }
-    
+
     const input = component.render({
       fieldPath,
       type: item.type,
+      label: item.label,
       properties: item.properties,
       value: this.getNestedValue(this.formData, fieldPath),
       required: item.required,
-      placeholder: item.placeholder,
       isPassword: item.isPassword,
     });
 
@@ -552,59 +251,9 @@ class ClarifyJS {
       this.validateField(fieldPath, item);
     });
 
-    // Aplicar máscara si existe
-    if (item.properties?.mask && actualInput instanceof HTMLInputElement) {
-      this.applyMask(actualInput, item.properties.mask);
-    }
-
     return input;
   }
 
-  /**
-   * Aplica una máscara a un input
-   */
-  private applyMask(input: HTMLInputElement, mask: string | RegExp) {
-    if (typeof mask === 'string') {
-      // Máscara de formato tipo "###-#####"
-      // Contar cuántos # hay en la máscara para saber el límite de dígitos
-      const maxDigits = (mask.match(/#/g) || []).length;
-      
-      // Usar 'input' con captura para ejecutarse ANTES que otros listeners
-      input.addEventListener('input', () => {
-        let value = input.value.replace(/\D/g, ''); // Solo números
-        
-        // Limitar a la cantidad máxima de dígitos permitidos
-        if (value.length > maxDigits) {
-          value = value.slice(0, maxDigits);
-        }
-        
-        let formatted = '';
-        let valueIndex = 0;
-
-        for (let i = 0; i < mask.length && valueIndex < value.length; i++) {
-          if (mask[i] === '#') {
-            formatted += value[valueIndex];
-            valueIndex++;
-          } else {
-            formatted += mask[i];
-          }
-        }
-
-        // Guardar el valor sin formato en data-raw-value
-        input.setAttribute('data-raw-value', value);
-        input.value = formatted;
-      }, { capture: true }); // Ejecutar en fase de captura (ANTES de burbujeo)
-    } else {
-      // Máscara regex
-      input.addEventListener('input', () => {
-        const value = input.value;
-        if (!mask.test(value) && value !== '') {
-          // Si no coincide con la regex, revertir al valor anterior
-          input.value = input.value.slice(0, -1);
-        }
-      });
-    }
-  }
 
   /**
    * Maneja cambios en un campo
@@ -614,30 +263,15 @@ class ClarifyJS {
     input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
     item: StructureItem
   ) {
-    let value: any;
-
-    if (input instanceof HTMLInputElement && input.type === "checkbox") {
-      value = input.checked;
-    } else if (item.type === "number") {
-      value = input.value ? Number(input.value) : undefined;
-    } else {
-      // Si el campo tiene máscara de formato, usar el valor sin formato
-      if (input instanceof HTMLInputElement && input.hasAttribute('data-raw-value')) {
-        value = input.getAttribute('data-raw-value') || undefined;
-      } else {
-        // Para campos de texto, si está vacío usar undefined para campos opcionales
-        // o el valor real para procesamiento posterior
-        value = input.value || undefined;
-      }
-    }
-
+    const value = ValidationHelper.extractInputValue(input, item.type);
     this.setNestedValue(this.formData, fieldPath, value);
     
     if (this.onChangeCallback) {
       this.onChangeCallback(this.formData, this.errors);
     }
 
-
+    // Notificar el estado de validación después del cambio
+    this.notifyValidationState();
   }
 
   /**
@@ -646,140 +280,105 @@ class ClarifyJS {
   private validateField(fieldPath: string, item: StructureItem) {
     if (!item.validation) return;
 
-    // Obtener el valor actual del input (en lugar de solo formData)
+    // Obtener el valor actual del input
     const input = this.container.querySelector(`[name="${fieldPath}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
     let value = this.getNestedValue(this.formData, fieldPath);
     
-    // Si hay un input, usar su valor actual en lugar del formData
+    // Si hay un input, extraer su valor actual
     if (input) {
-      if (input instanceof HTMLInputElement && input.type === "checkbox") {
-        value = input.checked;
-      } else if (item.type === "number") {
-        value = input.value ? Number(input.value) : undefined;
-      } else {
-        // Si el campo tiene máscara de formato, usar el valor sin formato
-        if (input instanceof HTMLInputElement && input.hasAttribute('data-raw-value')) {
-          value = input.getAttribute('data-raw-value');
-        } else {
-          value = input.value || undefined;
-        }
-      }
-      
-      // Actualizar formData con el valor actual
+      value = ValidationHelper.extractInputValue(input, item.type);
       this.setNestedValue(this.formData, fieldPath, value);
     }
     
-    // Si el campo no es requerido y está vacío/undefined, considerarlo válido
-    if (!item.required && (value === undefined || value === null || value === '')) {
-      // Limpiar cualquier error previo
+    // Si el campo es opcional y está vacío, considerarlo válido
+    if (ValidationHelper.isEmptyAndOptional(value, item.required ?? false)) {
       delete this.errors[fieldPath];
-
-      const errorContainer = this.container.querySelector(
-        `[data-error-for="${fieldPath}"]`
-      );
-      if (errorContainer) {
-        errorContainer.textContent = "";
-        errorContainer.classList.remove("opacity-100");
-        errorContainer.classList.add("opacity-0");
-      }
-
-      const field = this.container.querySelector(`[data-field="${fieldPath}"]`);
-      field?.classList.remove("has-error");
-      
-      if (input && !input.classList.contains("w-auto")) {
-        input.classList.remove("border-red-500", "focus:border-red-500", "focus:ring-red-100");
-        input.classList.add("border-gray-300", "focus:border-blue-500", "focus:ring-blue-100");
-      }
-      
+      DOMHelper.clearFieldError(this.container, fieldPath);
       return;
     }
-    
-    const result = item.validation.safeParse(value);
 
-    const errorContainer = this.container.querySelector(
-      `[data-error-for="${fieldPath}"]`
-    );
+    
+    // Validar el valor del campo
+    const result = ValidationHelper.validateFieldValue(item, value);
 
     // Guardar el campo como que ha tenido errores anteriormente
     this.previousErrorFields.add(fieldPath);
 
-    if (!result.success) {
-      const errors = JSON.parse(result.error.toString()).map((e: any) => e.message);
-      this.errors[fieldPath] = errors;
-
-      if (errorContainer) {
-        errorContainer.textContent = errors.join(", ");
-        errorContainer.classList.remove("opacity-0");
-        errorContainer.classList.add("opacity-100");
-      }
-
-      const field = this.container.querySelector(`[data-field="${fieldPath}"]`);
-      field?.classList.add("has-error");
-      
-      // Añadir clases de error al input
-      if (input) {
-        input.classList.remove("border-gray-300", "focus:border-blue-500", "focus:ring-blue-100");
-        input.classList.add("border-red-500", "focus:border-red-500", "focus:ring-red-100");
-      }
+    if (!result.success && result.errors) {
+      console.log(result.errors);
+      // Campo inválido - mostrar error
+      console.log('error',this.errors)
+      this.errors[fieldPath] = result.errors;
+      DOMHelper.showFieldError(this.container, fieldPath, result.errors);
     } else {
-      // El campo individual es válido, pero debemos verificar si el schema completo tiene errores para este campo
-      // (por ejemplo, errores de refine que dependen de múltiples campos)
+      // Campo válido individualmente
       delete this.errors[fieldPath];
-
-      if (errorContainer) {
-        errorContainer.textContent = "";
-        errorContainer.classList.remove("opacity-100");
-        errorContainer.classList.add("opacity-0");
-      }
-
-      const field = this.container.querySelector(`[data-field="${fieldPath}"]`);
-      field?.classList.remove("has-error");
+      DOMHelper.clearFieldError(this.container, fieldPath);
       
-      // Restaurar clases normales al input
-      if (input && !input.classList.contains("w-auto")) { // No aplicar a checkboxes
-        input.classList.remove("border-red-500", "focus:border-red-500", "focus:ring-red-100");
-        input.classList.add("border-gray-300", "focus:border-blue-500", "focus:ring-blue-100");
-      }
+      // Verificar errores de schema completo (ej: refine cross-field)
+      this.validateCrossFieldErrors();
+    }
+
+    // Notificar el estado de validación después de validar el campo
+    this.notifyValidationState();
+  }
+
+  /**
+   * Valida errores que dependen de múltiples campos (refine)
+   */
+  private validateCrossFieldErrors() {
+    if (!this.schema) return;
+
+    const schemaResult = this.schema.safeParse(this.formData);
+    if (!schemaResult.success) {
+      const zodErrors = schemaResult.error.issues;
+    
+
+      // Buscar errores para campos que han tenido errores previamente
+      const fieldErrors = zodErrors.filter((err: any) => {
+        const listPreviousErrorFields = Array.from(this.previousErrorFields);
+        return listPreviousErrorFields.includes(err.path.join("."));
+      });
       
-      // Verificar si el schema completo tiene errores para este campo (ej: refine)
-      if (this.schema) {
-        const schemaResult = this.schema.safeParse(this.formData);
-        if (!schemaResult.success) {
-          const zodErrors = schemaResult.error.issues;
-          
-          // Buscar si hay errores para este campo específico en el schema completo
-          const fieldErrors = zodErrors.filter((err: any) => {
-            const listPreviousErrorFields = Array.from(this.previousErrorFields);
-            return listPreviousErrorFields.includes(err.path.join("."));
+      if (fieldErrors.length > 0) {
+        DOMHelper.applyErrorStyles(this.container, fieldErrors.map(err => ({
+          path: err.path.map(String),
+          message: err.message
+        })));
+        
+        // Actualizar registro de errores
+        fieldErrors.forEach((err: any) => {
+          err.path.forEach((key: string) => {
+            this.errors[key] = err.message;
           });
-          
-          if (fieldErrors.length > 0) {
-
-            fieldErrors.forEach((err: any) => {
-              err.path.forEach((key: string) => {
-                this.errors[key] = err.message;
-                const input = this.container.querySelector(`[name="${key}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-                 const errorContainer = this.container.querySelector(`[data-error-for="${key}"]`);
-                 const field = this.container.querySelector(`[data-field="${key}"]`);
-
-                   if (errorContainer) {
-                      errorContainer.textContent = err.message;
-                      errorContainer.classList.remove("opacity-0");
-                      errorContainer.classList.add("opacity-100");
-                    }
-                    
-                    field?.classList.add("has-error");
-                    
-                    if (input) {
-                      input.classList.remove("border-gray-300", "focus:border-blue-500", "focus:ring-blue-100");
-                      input.classList.add("border-red-500", "focus:border-red-500", "focus:ring-red-100");
-                    }
-              });
-            });
-          }
-        }
+        });
       }
     }
+  }
+
+  /**
+   * Notifica el estado de validación del formulario completo
+   * Usado para habilitar/deshabilitar el botón de submit en tiempo real
+   */
+  private notifyValidationState() {
+    if (!this.onValidateCallback) return;
+
+    // Determinar si hay errores actuales
+    const hasErrors = Object.keys(this.errors).length > 0;
+    let isValid = !hasErrors;
+
+    // Validar con el schema completo si existe
+    if (this.schema && !hasErrors) {
+      const result = this.schema.safeParse(this.formData);
+      console.log({schema:this.schema})
+      console.log({result})
+      if (!result.success) {
+        isValid = false;
+      }
+    }
+
+    // Invocar callback con el estado actual
+    this.onValidateCallback(isValid, this.formData, this.errors);
   }
 
   
@@ -827,15 +426,9 @@ class ClarifyJS {
    * Valida todos los campos recursivamente
    */
   private validateAllFields(structure: Structure, parentPath: string = "") {
-    for (const [key, item] of Object.entries(structure)) {
-      const fieldPath = parentPath ? `${parentPath}.${key}` : key;
-
-      if (item.children) {
-        this.validateAllFields(item.children, fieldPath);
-      } else if (item.validation) {
-        this.validateField(fieldPath, item);
-      }
-    }
+    StructureUtil.validateAll(structure, (fieldPath, item) => {
+      this.validateField(fieldPath, item);
+    }, parentPath);
   }
 
   /**
@@ -862,20 +455,14 @@ class ClarifyJS {
    * Obtiene un valor anidado usando un path con puntos
    */
   private getNestedValue(obj: any, path: string): any {
-    return path.split(".").reduce((current, key) => current?.[key], obj);
+    return NestedObjectUtil.get(obj, path);
   }
 
   /**
    * Establece un valor anidado usando un path con puntos
    */
   private setNestedValue(obj: any, path: string, value: any) {
-    const keys = path.split(".");
-    const lastKey = keys.pop()!;
-    const target = keys.reduce((current, key) => {
-      if (!current[key]) current[key] = {};
-      return current[key];
-    }, obj);
-    target[lastKey] = value;
+    NestedObjectUtil.set(obj, path, value);
   }
 
   /**
@@ -901,32 +488,69 @@ class ClarifyJS {
   }
 
   /**
+   * Establece propiedades de un campo
+   */
+  setFieldProperty(
+    fieldPath: TSchema extends zodOrigin.ZodObject<any> ? FieldPaths<InferSchemaType<TSchema>> : string, 
+    property: keyof NonNullable<StructureItem["properties"]>, 
+    value: any,
+    container?: HTMLElement
+  ) {
+    // 1. Actualizar la estructura interna
+    const structureItem = this.getStructureItem(fieldPath);
+    if (!structureItem) {
+      console.warn(`ClarifyJS: No se encontró el campo "${fieldPath}" en la estructura`);
+      return;
+    }
+
+    // Inicializar properties si no existe
+    if (!structureItem.properties) {
+      structureItem.properties = {};
+    }
+
+    // Actualizar el valor en la estructura
+    (structureItem.properties as any)[property] = value;
+
+    // 2. Aplicar cambios visuales en el DOM
+    const targetContainer = container || this.container;
+    const fieldElement = targetContainer.querySelector(`[data-field="${fieldPath}"]`) as HTMLElement;
+    if (!fieldElement) {
+      console.warn(`ClarifyJS: No se encontró el elemento DOM para "${fieldPath}"`);
+      return;
+    }
+
+    // Validar si el campo es visible
+    if (!ValidationHelper.isVisible(structureItem.properties )) delete this.errors[fieldPath];
+    
+
+    // Delegar actualización visual al helper
+    DOMHelper.updateFieldProperty(
+      fieldElement, 
+      property as string, 
+      value, 
+      (input, mask) => MaskHelper.applyMask(input, mask)
+    );
+  }
+
+  /**
+   * Obtiene un item de la estructura usando un path con puntos
+   */
+  private getStructureItem(fieldPath: string): StructureItem | null {
+    return StructureUtil.getItem(this.structure, fieldPath);
+  }
+
+  /**
    * Puebla el formulario con datos
    */
   private populateForm(data: Record<string, any>, prefix: string = "") {
-    for (const [key, value] of Object.entries(data)) {
-      const fieldPath = prefix ? `${prefix}.${key}` : key;
-      const input = this.container.querySelector(
-        `[name="${fieldPath}"]`
-      ) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-
-      if (input) {
-        if (input instanceof HTMLInputElement && input.type === "boolean") {
-          input.checked = Boolean(value);
-        } else {
-          input.value = String(value);
-        }
-      } else if (typeof value === "object" && value !== null) {
-        this.populateForm(value, fieldPath);
-      }
-    }
+    FormPopulateHelper.populate(this.container, data, prefix);
   }
 
   /**
    * Método estático para crear formulario desde schema Zod
    */
-  static fromSchema(
-    schema: zodOriginal.ZodObject<any>,
+  static fromSchema<T extends zodOrigin.ZodObject<any>>(
+    schema: T,
     config?: {
       el?: string | HTMLElement;
       onSubmit?: (data: any) => void;
@@ -934,9 +558,9 @@ class ClarifyJS {
       onValidate?: (isValid: boolean, data: any, errors: any) => void;
       components?: Record<string, ComponentConfig>;
     }
-  ): ClarifyJS {
+  ): ClarifyJS<T> {
     const structure = ZodExtractor.schemaToStructure(schema);
-    return new ClarifyJS({
+    return new ClarifyJS<T>({
       structure,
       schema,
       onSubmit: config?.onSubmit,
@@ -951,13 +575,5 @@ class ClarifyJS {
 export { ClarifyJS, ZodExtractor, z };
 export type { Structure, StructureItem, FormConfig };
 
-// Exportar componentes
-export { 
-  TextInput, 
-  TextArea, 
-  SelectInput, 
-  CheckboxInput, 
-  PasswordInput,
-  DefaultComponents 
-} from './components';
-export type { ComponentConfig, RenderConfig } from './components';
+
+export type { ComponentConfig, RenderConfig } from './interface';

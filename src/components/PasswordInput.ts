@@ -44,7 +44,7 @@ export const PasswordInput: ComponentConfig = {
     if (config.isPassword) {
       const toggleButton = document.createElement('button');
       toggleButton.type = 'button';
-      toggleButton.classList.add('absolute', 'right-2', 'top-1/2', '-translate-y-1/2', 'p-1', 'text-gray-500', 'hover:text-gray-700', 'focus:outline-none');
+      toggleButton.classList.add('absolute', 'right-2', 'top-1/2', '-translate-y-1/4', 'p-1', 'text-gray-500', 'hover:text-gray-700', 'focus:outline-none');
       toggleButton.innerHTML = `
         <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>

@@ -499,6 +499,83 @@ form.setData({
 });
 ```
 
+## 🎨 Componentes Personalizados
+
+ClarifyJS permite personalizar completamente el aspecto de tus formularios con tres niveles de personalización:
+
+### 1. Componentes Globales (Recomendado para temas)
+
+Registra componentes una vez al inicio de tu aplicación y todos los formularios los heredarán:
+
+```typescript
+import { ClarifyJS } from "./clarifyjs";
+import { ToggleSwitch, StyledCheckbox } from "./my-components";
+
+// En tu main.ts o index.ts
+ClarifyJS.registerComponents({
+  boolean: ToggleSwitch,           // Todos los booleanos usan toggle
+  acceptTerms: StyledCheckbox,     // Campo específico usa checkbox estilizado
+});
+
+// Ahora TODOS los formularios usan estos componentes automáticamente
+const form = ClarifyJS.fromSchema(schema, {
+  onSubmit: (data) => console.log(data)
+});
+```
+
+### 2. Componentes por Instancia
+
+Personaliza componentes solo para un formulario específico:
+
+```typescript
+const form = ClarifyJS.fromSchema(schema, {
+  components: {
+    boolean: MyCustomToggle,      // Sobrescribe el global para este formulario
+    premium: PremiumCheckbox,     // Solo el campo "premium" usa este componente
+  },
+  onSubmit: (data) => console.log(data)
+});
+```
+
+### 3. Componentes por Campo (Zod)
+
+Asigna un componente directamente a un campo en el schema:
+
+```typescript
+const schema = z.object({
+  notifications: z.boolean()
+    .label("Notificaciones")
+    .component(ToggleSwitch),  // Solo este campo usa ToggleSwitch
+});
+```
+
+### Crear Componentes Personalizados
+
+```typescript
+import type { ComponentConfig } from "./clarifyjs";
+
+export const ToggleSwitch: ComponentConfig = {
+  render: (config) => {
+    // Crear y retornar elemento HTML
+    const wrapper = document.createElement('div');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.name = config.fieldPath;
+    // ... tu lógica personalizada
+    return wrapper;
+  },
+  getValue: (element) => {
+    return element.querySelector('input')?.checked || false;
+  },
+  setValue: (element, value) => {
+    const input = element.querySelector('input');
+    if (input) input.checked = Boolean(value);
+  }
+};
+```
+
+**📖 Ver documentación completa**: [COMPONENTS_GUIDE.md](./COMPONENTS_GUIDE.md)
+
 ## 🤝 Contribuir
 
 Las contribuciones son bienvenidas. Por favor:

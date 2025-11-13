@@ -37,7 +37,10 @@ export const SelectInput: ComponentConfig = {
 
     if (config.value !== undefined) {
       select.value = String(config.value);
+    }else{
+      (select as any).value = undefined;
     }
+
 
     return select;
   },

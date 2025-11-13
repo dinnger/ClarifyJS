@@ -21,11 +21,16 @@ import { PasswordInput } from './PasswordInput';
 import type { ComponentConfig } from './types';
 
 export const DefaultComponents: Record<string, ComponentConfig> = {
-  text: TextInput,
+  // Tipos de Zod
+  string: TextInput,
   number: TextInput,
+  boolean: CheckboxInput,
+  
+  // Tipos de HTML (legacy)
+  text: TextInput,
   email: TextInput,
   password: PasswordInput,
   textarea: TextArea,
   select: SelectInput,
-  boolean: CheckboxInput,
+  enum: SelectInput,
 };

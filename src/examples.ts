@@ -3,10 +3,10 @@ import { ClarifyJS, z } from "./index";
 // ==================== EJEMPLO 1: FORMULARIO DE REGISTRO ====================
 export function registrationFormExample() {
   const registrationSchema = z.object({
-    firstName: z.string('El nombre es obligatorio').min(2, "Mínimo 2 caracteres").label("Nombre").style({size:6}).optional(),
-    lastName: z.string().min(2, "Mínimo 2 caracteres").label("Apellido").style({size:6}).optional(),
+    firstName: z.string('El nombre es obligatorio').min(2, "Mínimo 2 caracteres").label("Nombre").properties({size:6}).optional(),
+    lastName: z.string().min(2, "Mínimo 2 caracteres").label("Apellido").properties({size:6}).optional(),
     email: z.string().email("Email inválido").label("Correo Electrónico"),
-    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").label("Contraseña Segura"),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").label("Contras Segura").password(),
     confirmPassword: z.string().label("Confirmar Contraseña"),
     age: z.number().min(18, "Debes ser mayor de edad").max(120).label("Edad"),
     country: z.enum({mx: "México", us: "USA", es: "España", ar: "Argentina"}).label("País"),
@@ -152,7 +152,8 @@ export function customValidationExample() {
     .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
     .regex(/[a-z]/, "Debe contener al menos una minúscula")
     .regex(/[0-9]/, "Debe contener al menos un número")
-    .regex(/[^A-Za-z0-9]/, "Debe contener al menos un carácter especial");
+    .regex(/[^A-Za-z0-9]/, "Debe contener al menos un carácter especial")
+    .password();
 
   const customSchema = z.object({
     email: z.string().email("Email inválido"),
@@ -188,22 +189,22 @@ export function masksExample() {
     phone: z.string()
       .length(10, "Teléfono debe tener 10 dígitos")
       .label("Teléfono")
-      .mask("###-###-####"),
+      .properties({mask: "###-###-####"}),
     
     accountNumber: z.string()
       .regex(/^[1-6]\d{0,5}$/, "Debe iniciar con 1-6 y máximo 6 dígitos")
       .label("Número de cuenta (1-6 + hasta 5 dígitos)")
-      .mask(/^[1-6]\d{0,5}$/),
+      .properties({mask: /^[1-6]\d{0,5}$/}),
     
     zipCode: z.string()
       .length(5, "Código postal debe ser 5 dígitos")
       .label("Código Postal")
-      .mask("#####"),
+      .properties({mask: "#####"}),
     
     creditCard: z.string()
       .length(16, "Tarjeta debe tener 16 dígitos")
       .label("Tarjeta de Crédito")
-      .mask("####-####-####-####"),
+      .properties({mask: "####-####-####-####"}),
     
     password: z.string()
       .min(8, "Mínimo 8 caracteres")

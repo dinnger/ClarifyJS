@@ -1,27 +1,44 @@
 import { ClarifyJS, z } from "./index";
-import type { Structure } from "./index";
 
 // ==================== EJEMPLO 1: FORMULARIO DE REGISTRO ====================
 export function registrationFormExample() {
   const registrationSchema = z.object({
-    firstName: z.string().min(2, "Mínimo 2 caracteres").label("Nombre").style({size:6}),
-    lastName: z.string().min(2, "Mínimo 2 caracteres").label("Apellido").style({size:6}),
+    firstName: z.string('El nombre es obligatorio').min(2, "Mínimo 2 caracteres").label("Nombre").style({size:6}).optional(),
+    lastName: z.string().min(2, "Mínimo 2 caracteres").label("Apellido").style({size:6}).optional(),
     email: z.string().email("Email inválido").label("Correo Electrónico"),
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").label("Contraseña Segura"),
     confirmPassword: z.string().label("Confirmar Contraseña"),
     age: z.number().min(18, "Debes ser mayor de edad").max(120).label("Edad"),
-    country: z.enum(["México", "USA", "España", "Argentina"]).label("País"),
+    country: z.enum({mx: "México", us: "USA", es: "España", ar: "Argentina"}).label("País"),
     acceptTerms: z.boolean().refine(val => val === true, {
       message: "Debes aceptar los términos",
-    }).label("Acepto términos y condiciones"),
+    }).label("Terminos y condiciones"),
   }).refine(data => data.password === data.confirmPassword, {
     message: "Las contraseñas no coinciden",
     path: ["confirmPassword"],
   });
 
   return ClarifyJS.fromSchema(registrationSchema, {
+    onValidate: (isValid, data, errors) => {
+      // Este callback se puede usar con frameworks reactivos
+      // Vue: ref(isValid) / React: setState(isValid) / Angular: signal(isValid)
+      console.log("🔍 Validación ejecutada:", { isValid, data, errors });
+      
+      // Actualizar el estado del botón de submit
+      if (typeof window !== 'undefined' && (window as any).updateSubmitButton) {
+        (window as any).updateSubmitButton(isValid);
+      }
+      
+      // Ejemplo de integración con frameworks:
+      // Vue 3: formValidSignal.value = isValid
+      // React: setFormValid(isValid)
+      // Angular: formValidSignal.set(isValid)
+    },
+    onChange: (data, errors) => {
+      console.log("Cambio detectado:", { data, errors });
+    },
     onSubmit: (data) => {
-      console.log("Registro exitoso:", data);
+      console.log("✅ Registro exitoso:", data);
       alert("¡Registro exitoso! Ver consola.");
     },
   });
@@ -38,13 +55,23 @@ export function addressFormExample() {
       city: z.string().min(2, "Ciudad inválida"),
       state: z.string().min(2, "Estado inválido"),
       zipCode: z.number().int().min(10000).max(99999, "Código postal inválido"),
-    }),
+    }).label('Seccion'),
     phone: z.string().regex(/^\d{10}$/, "Teléfono debe tener 10 dígitos"),
   });
 
   return ClarifyJS.fromSchema(addressSchema, {
+    onValidate: (isValid, _data, errors) => {
+      console.log("🔍 Estado de validación:", isValid ? "✅ Válido" : "❌ Inválido");
+      if (!isValid) {
+        console.log("Errores encontrados:", errors);
+      }
+      // Actualizar el estado del botón de submit
+      if (typeof window !== 'undefined' && (window as any).updateSubmitButton) {
+        (window as any).updateSubmitButton(isValid);
+      }
+    },
     onSubmit: (data) => {
-      console.log("Dirección guardada:", data);
+      console.log("✅ Dirección guardada:", data);
       alert("¡Dirección guardada! Ver consola.");
     },
   });
@@ -63,8 +90,16 @@ export function productFormExample() {
   });
 
   return ClarifyJS.fromSchema(productSchema, {
+    onValidate: (isValid) => {
+      // Signal simple para frameworks reactivos
+      console.log("🔍 Formulario válido:", isValid);
+      // Actualizar el estado del botón de submit
+      if (typeof window !== 'undefined' && (window as any).updateSubmitButton) {
+        (window as any).updateSubmitButton(isValid);
+      }
+    },
     onSubmit: (data) => {
-      console.log("Producto creado:", data);
+      console.log("✅ Producto creado:", data);
       alert("¡Producto creado! Ver consola.");
     },
   });
@@ -93,8 +128,15 @@ export function userProfileExample() {
   });
 
   return ClarifyJS.fromSchema(profileSchema, {
+    onValidate: (isValid) => {
+      console.log("🔍 Perfil válido:", isValid);
+      // Actualizar el estado del botón de submit
+      if (typeof window !== 'undefined' && (window as any).updateSubmitButton) {
+        (window as any).updateSubmitButton(isValid);
+      }
+    },
     onSubmit: (data) => {
-      console.log("Perfil actualizado:", data);
+      console.log("✅ Perfil actualizado:", data);
       alert("¡Perfil actualizado! Ver consola.");
     },
     onChange: (data, errors) => {
@@ -126,9 +168,61 @@ export function customValidationExample() {
   });
 
   return ClarifyJS.fromSchema(customSchema, {
+    onValidate: (isValid) => {
+      console.log("🔍 Validaciones custom:", isValid ? "✅ Todas pasaron" : "❌ Hay errores");
+      // Actualizar el estado del botón de submit
+      if (typeof window !== 'undefined' && (window as any).updateSubmitButton) {
+        (window as any).updateSubmitButton(isValid);
+      }
+    },
     onSubmit: (data) => {
-      console.log("Validación exitosa:", data);
+      console.log("✅ Validación exitosa:", data);
       alert("¡Todas las validaciones pasaron! Ver consola.");
+    },
+  });
+}
+
+// ==================== EJEMPLO 7: FORMULARIO CON MÁSCARAS ====================
+export function masksExample() {
+  const masksSchema = z.object({
+    phone: z.string()
+      .length(10, "Teléfono debe tener 10 dígitos")
+      .label("Teléfono")
+      .mask("###-###-####"),
+    
+    accountNumber: z.string()
+      .regex(/^[1-6]\d{0,5}$/, "Debe iniciar con 1-6 y máximo 6 dígitos")
+      .label("Número de cuenta (1-6 + hasta 5 dígitos)")
+      .mask(/^[1-6]\d{0,5}$/),
+    
+    zipCode: z.string()
+      .length(5, "Código postal debe ser 5 dígitos")
+      .label("Código Postal")
+      .mask("#####"),
+    
+    creditCard: z.string()
+      .length(16, "Tarjeta debe tener 16 dígitos")
+      .label("Tarjeta de Crédito")
+      .mask("####-####-####-####"),
+    
+    password: z.string()
+      .min(8, "Mínimo 8 caracteres")
+      .label("Contraseña con Toggle")
+      .regex(/[A-Z]/, "Debe contener mayúscula")
+      .regex(/[0-9]/, "Debe contener número")
+      .password(),
+  });
+
+  return ClarifyJS.fromSchema(masksSchema, {
+    onValidate: (isValid) => {
+      console.log("🔍 Máscaras válidas:", isValid);
+      if (typeof window !== 'undefined' && (window as any).updateSubmitButton) {
+        (window as any).updateSubmitButton(isValid);
+      }
+    },
+    onSubmit: (data) => {
+      console.log("✅ Datos con máscaras:", data);
+      alert("¡Datos enviados! Ver consola.");
     },
   });
 }

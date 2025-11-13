@@ -18,6 +18,7 @@
       productFormExample,
       userProfileExample,
       customValidationExample,
+      masksExample,
     } from "./examples.ts";
 
     const demos = {
@@ -46,9 +47,15 @@
         description: "Expresiones regulares complejas y reglas de contraseña",
         fn: customValidationExample,
       },
+      masks: {
+        title: "Máscaras de Entrada",
+        description: "Máscaras de formato y regex, password con toggle",
+        fn: masksExample,
+      },
     };
 
     let currentDemo = null;
+    let submitButton = null;
 
     function loadDemo(demoKey) {
       const demo = demos[demoKey];
@@ -76,8 +83,28 @@
       const form = demo.fn();
       container.appendChild(form.render());
 
+      // Crear y añadir botón de submit
+      submitButton = document.createElement("button");
+      submitButton.type = "submit";
+      submitButton.disabled = true; // Inicialmente deshabilitado
+      submitButton.className = "clarifyjs-submit bg-blue-500 text-white px-6 py-3 border-none rounded-md text-base font-semibold cursor-pointer transition-all w-full mt-2.5 hover:bg-blue-600 hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(59,130,246,0.3)] active:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none";
+      submitButton.textContent = "Enviar Formulario";
+
+      // Añadir el botón al formulario
+      const formElement = container.querySelector("form");
+      if (formElement) {
+        formElement.appendChild(submitButton);
+      }
+
       currentDemo = form;
     }
+
+    // Función para actualizar el estado del botón (llamada por onValidate)
+    window.updateSubmitButton = function (isValid) {
+      if (submitButton) {
+        submitButton.disabled = !isValid;
+      }
+    };
 
     // Inicializar
     window.addEventListener("DOMContentLoaded", () => {

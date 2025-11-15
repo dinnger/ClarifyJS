@@ -53,24 +53,24 @@ export class DOMHelper {
 	 */
 	static applyErrorStyles(container: HTMLElement, errors: Array<{ path: string[]; message: string }>): void {
 		errors.forEach((err) => {
-			err.path.forEach((key: string) => {
-				const errorContainer = container.querySelector(`[data-error-for="${key}"]`)
-				const field = container.querySelector(`[data-field="${key}"]`)
-				const input = container.querySelector(`[name="${key}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+			// Usar el path completo con puntos para campos anidados
+			const fieldPath = err.path.join('.')
+			const errorContainer = container.querySelector(`[data-error-for="${fieldPath}"]`)
+			const field = container.querySelector(`[data-field="${fieldPath}"]`)
+			const input = container.querySelector(`[name="${fieldPath}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
 
-				if (errorContainer) {
-					errorContainer.textContent = err.message
-					errorContainer.classList.remove('opacity-0')
-					errorContainer.classList.add('opacity-100')
-				}
+			if (errorContainer) {
+				errorContainer.textContent = err.message
+				errorContainer.classList.remove('opacity-0')
+				errorContainer.classList.add('opacity-100')
+			}
 
-				field?.classList.add('has-error')
+			field?.classList.add('has-error')
 
-				if (input && !input.classList.contains('w-auto')) {
-					input.classList.remove('border-gray-300', 'focus:border-blue-500', 'focus:ring-blue-100')
-					input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100')
-				}
-			})
+			if (input && !input.classList.contains('w-auto')) {
+				input.classList.remove('border-gray-300', 'focus:border-blue-500', 'focus:ring-blue-100')
+				input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100')
+			}
 		})
 	}
 

@@ -82,7 +82,9 @@ export class ValidationHelper {
 			// Si tiene hijos, buscar recursivamente
 			if (item.children) {
 				const childInvisible = ValidationHelper.getInvisibleFields(item.children, fieldPath)
-				childInvisible.forEach((path) => invisibleFields.add(path))
+				for (const path of childInvisible) {
+					invisibleFields.add(path)
+				}
 			}
 		}
 
@@ -90,23 +92,23 @@ export class ValidationHelper {
 	}
 
 	/**
+	 * Valida un schema con datos
+	 */
+	static validateSchema(schema: zodOrigin.ZodObject<any>, data: any): { success: boolean; error?: any; data?: any } {
+		return schema.safeParse(data)
+	}
+
+	/**
 	 * Valida el schema excluyendo campos con visible=false
 	 */
-	static validateVisibleFieldsOnly(
-		schema: zodOrigin.ZodObject<any>,
-		structure: Structure,
-		data: any
-	): { success: boolean; error?: any; data?: any } {
-		if (!schema) {
-			return { success: true, data }
-		}
-
+	static validateVisibleFieldsOnly(schema: zodOrigin.ZodObject<any>, structure: Structure, data: any): any {
 		// Obtener campos invisibles
 		const invisibleFields = ValidationHelper.getInvisibleFields(structure)
 
 		// Si no hay campos invisibles, validar normalmente
 		if (invisibleFields.size === 0) {
-			return schema.safeParse(data) as any
+			return schema
+			// return schema.safeParse(data) as any
 		}
 
 		// Crear una copia de los datos sin los campos invisibles
@@ -125,11 +127,7 @@ export class ValidationHelper {
 		})
 
 		// Construir schema modificado usando .omit() recursivamente
-		const modifiedSchema = ValidationHelper.buildSchemaWithOmittedFields(schema, invisibleFields)
-
-		// Validar con el schema modificado
-		const result = modifiedSchema.safeParse(data) as any
-		return result
+		return ValidationHelper.buildSchemaWithOmittedFields(schema, invisibleFields)
 	}
 
 	/**

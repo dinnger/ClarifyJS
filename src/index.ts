@@ -10,6 +10,7 @@ class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<a
 
 	private container: HTMLElement
 	private structure: Structure
+	private baseSchema: TSchema | undefined
 	private schema: TSchema | undefined
 	private formData: Record<string, any> = {}
 	private errors: Record<string, string[]> = {}
@@ -36,6 +37,7 @@ class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<a
 		this.container = document.createElement('form')
 		this.container.classList.add('clarifyjs-form')
 		this.structure = config.structure
+		this.baseSchema = config.schema as TSchema | undefined
 		this.schema = config.schema as TSchema | undefined
 		this.onSubmitCallback = config.onSubmit
 		this.onChangeCallback = config.onChange
@@ -139,6 +141,8 @@ class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<a
 				})
 			}
 		}
+
+		if (this.baseSchema) this.schema = ValidationHelper.validateVisibleFieldsOnly(this.baseSchema, this.structure, this.formData)
 
 		return container
 	}
@@ -329,7 +333,7 @@ class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<a
 	private validateCrossFieldErrors() {
 		if (!this.schema) return
 
-		const schemaResult = ValidationHelper.validateVisibleFieldsOnly(this.schema, this.structure, this.formData)
+		const schemaResult = ValidationHelper.validateSchema(this.schema, this.formData)
 		if (!schemaResult.success) {
 			const zodErrors = schemaResult.error.issues
 
@@ -348,11 +352,10 @@ class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<a
 					}))
 				)
 
-				// Actualizar registro de errores
+				// Actualizar registro de errores usando el path completo
 				fieldErrors.forEach((err: any) => {
-					err.path.forEach((key: string) => {
-						this.errors[key] = err.message
-					})
+					const fullPath = err.path.join('.')
+					this.errors[fullPath] = [err.message]
 				})
 			}
 		}
@@ -371,7 +374,7 @@ class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<a
 
 		// Validar con el schema completo si existe (solo campos visibles)
 		if (this.schema && !hasErrors) {
-			const result = ValidationHelper.validateVisibleFieldsOnly(this.schema, this.structure, this.formData)
+			const result = ValidationHelper.validateSchema(this.schema, this.formData)
 			if (!result.success) {
 				isValid = false
 			}
@@ -394,7 +397,7 @@ class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<a
 
 		// Validar con el schema completo si existe (solo campos visibles)
 		if (this.schema && !hasErrors) {
-			const result = ValidationHelper.validateVisibleFieldsOnly(this.schema, this.structure, this.formData)
+			const result = ValidationHelper.validateSchema(this.schema, this.formData)
 
 			if (!result.success) {
 				console.error('Errores de validación del schema:', result.error)
@@ -507,8 +510,9 @@ class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<a
 		if (!structureItem.properties) {
 			structureItem.properties = {}
 		}
-
 		// Actualizar el valor en la estructura
+		if ((structureItem.properties as any)[property] === value && !container) return // Si hay un schema base, validar con él
+
 		;(structureItem.properties as any)[property] = value
 
 		// 2. Aplicar cambios visuales en el DOM
@@ -524,6 +528,11 @@ class ClarifyJS<TSchema extends zodOrigin.ZodObject<any> = zodOrigin.ZodObject<a
 
 		// Delegar actualización visual al helper
 		DOMHelper.updateFieldProperty(fieldElement, property as string, value, (input, mask) => MaskHelper.applyMask(input, mask))
+
+		// Si hay un schema base, validar con él
+		if (this.baseSchema && !container) {
+			this.schema = ValidationHelper.validateVisibleFieldsOnly(this.baseSchema, this.structure, this.formData)
+		}
 	}
 
 	/**
